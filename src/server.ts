@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
-import { registryPageData, renderRegistryPage } from "./registry-page.js";
+import { gzipSync } from "node:zlib";
+import { registryPageData, registryPageStamp } from "./registry-page.js";
 import { acquireDirectoryLock } from "./locks.js";
 import { mkdirSync } from "node:fs";
 import { Records } from "./standard-workflow/records.js";
 import * as ownerActions from "./standard-workflow/project_owner_actions.js";
 import { catalog } from "./standard-workflow/project_files.js";
-import { tick_projects } from "./standard-workflow/workflow.js";
 import {
   configureNativeWorkspace,
-  publishNativePages,
 } from "./standard-workflow/platform.js";
 import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
@@ -16,6 +15,9 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { Store } from "./store.js";
+import {renderPublication,publication} from './standard-workflow/page_publish.js';
+import {existsSync,statSync,realpathSync} from 'node:fs';
+import {resolve,relative,isAbsolute,extname} from 'node:path';
 import {NativeRegistry} from './standard-workflow/native_registry.js';
 
 const assets = new Map([
@@ -183,7 +185,6 @@ export function createRegistryServer(store: Store): Server {
           const result = ownerActions.submit(name, input, store.home);
           setImmediate(() => {
             try {
-              publishNativePages(store);
             } catch (error) {
               console.error(
                 "Registry rebuild failed:",
@@ -203,13 +204,19 @@ export function createRegistryServer(store: Store): Server {
         }
       }
 
-      if (req.method === "GET" && url.pathname === "/api/registry-page")
-        return respond(200, registryPageData(store));
-      if (req.method === "GET" && url.pathname === "/") {
-        const { html, nonce } = renderRegistryPage(store);
+      if (req.method === "GET" && url.pathname === "/api/registry-page") {
+        const etag='"'+registryPageStamp(store)+'"';res.setHeader('ETag',etag);
+        res.setHeader('Cache-Control','no-cache');res.setHeader('Vary','Accept-Encoding');
+        if(req.headers['if-none-match']===etag){res.writeHead(304);res.end();return;}
+        const body=JSON.stringify(registryPageData(store));res.setHeader('Content-Type','application/json');
+        if(/\bgzip\b/.test(req.headers['accept-encoding']||'')){res.setHeader('Content-Encoding','gzip');res.end(gzipSync(body));}else res.end(body);
+        return;
+      }
+      if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+        const { html, nonce } = renderPublication(store);
         res.setHeader(
           "Content-Security-Policy",
-          `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'`,
+          `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'`,
         );
         res.writeHead(200, {
           "Content-Type": "text/html; charset=utf-8",
@@ -235,6 +242,11 @@ export function createRegistryServer(store: Store): Server {
           ),
         );
         return;
+      }
+      const spec=publication(store.home);
+      if(req.method==="GET"&&spec&&!url.pathname.startsWith('/api/')){
+       const candidate=resolve(spec.directory,'.'+decodeURIComponent(url.pathname));
+       if(existsSync(candidate)){const file=realpathSync(candidate),rel=relative(spec.directory,file);if(!isAbsolute(rel)&&rel!=='..'&&!rel.startsWith('../')&&statSync(file).isFile()){const mime:Record<string,string>={'.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.css':'text/css','.js':'text/javascript','.json':'application/json','.yaml':'text/plain','.html':'text/html'};res.writeHead(200,{'Content-Type':mime[extname(file)]||'application/octet-stream'});res.end(readFileSync(file));return;}}
       }
       respond(404, { error: "Not found" });
     } catch (error) {
@@ -328,16 +340,11 @@ export async function serve(
       if (busy || closed) return;
       busy = true;
       try {
-        configureNativeWorkspace(store, "project-manager");
-        const errors = await tick_projects(
-          store.home,
-          store.home,
-          {
-            all: true,
-          },
-          () => publishNativePages(store),
-        );
-        console.log(JSON.stringify({at:new Date().toISOString(),storage:"canonical-yaml",errors}));
+        // Workflow work is synchronous and can be slow; never block Registry HTTP requests.
+        await new Promise<void>((resolve,reject)=>{
+          const child=spawn(process.execPath,[fileURLToPath(new URL('./cli.js',import.meta.url)),'--home',store.home,'--as','project-manager','workflow','tick','--all'],{stdio:['ignore','inherit','inherit']});
+          child.once('error',reject);child.once('close',code=>code===0?resolve():reject(Error('Workflow process exited '+code)));
+        });
       } catch (error) {
         console.error("Control cycle failed:", (error as Error).message);
       } finally {

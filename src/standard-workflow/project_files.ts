@@ -279,6 +279,7 @@ export function catalog(
   root: string,
   records: Row[],
   include_paths = false,
+  expand_previews = true,
 ): Row {
   root = abs(root);
   const documents: Record<
@@ -343,6 +344,7 @@ export function catalog(
         : "";
     return `<a data-k="${key}" href="#${key}"${fragment}>${esc(label)}</a>`;
   }
+  const patterns = new WeakMap<Row,RegExp>();
   function walk(value: any, parent: string, evidence: Row, scoped: Row) {
     if (Array.isArray(value)) {
       for (const v of value) walk(v, parent, evidence, scoped);
@@ -353,15 +355,19 @@ export function catalog(
       return;
     }
     if (typeof value !== "string") return;
+    let pattern=patterns.get(evidence);
+    if(!pattern){
     const ids = Object.keys(evidence)
         .sort((a, b) => b.length - a.length)
         .map(regexEscape)
         .join("|"),
-      pattern = new RegExp(
+      compiled = new RegExp(
         FILE.source + (ids ? "|(?<![\\w-])(?:" + ids + ")(?![\\w-])" : ""),
         "g",
-      ),
-      matches = [...value.matchAll(pattern)];
+      );
+    patterns.set(evidence,compiled);pattern=compiled;
+    }
+    const matches = [...value.matchAll(pattern)];
     if (!matches.length) return;
     let rendered = "",
       start = 0,
@@ -470,6 +476,7 @@ export function catalog(
     previewBytes = 0;
   while (index < pending.length) {
     const [key, path] = pending[index++]!;
+    if (!expand_previews) { documents[key]!.body = `<p><a href="/api/files/${key.slice(4)}?download=1">Open source file</a></p>`; continue; }
     if (index > MAX_EXPANDED_DOCUMENTS || previewBytes >= MAX_PREVIEW_BYTES) {
       documents[key]!.body = omitted;
       continue;

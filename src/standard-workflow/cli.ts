@@ -1,5 +1,5 @@
 import {spawn} from 'node:child_process';
-import {pathToFileURL} from 'node:url';
+import {publicationUrl} from './page_publish.js';
 import {nativeRegistryCli} from './native_registry.js';
 import {network_cli} from './native_network.js';
 import {snapshot as ownerSnapshot} from './project_owner_actions.js';
@@ -76,7 +76,7 @@ export async function nativeCli(store:Store,args:string[],actor?:string):Promise
  }
  if(command==='registry'){
   if(action==='mail')return {handled:true,...await agentmsg_cli(store.home,['inbox'],'registry')};
-  if(action==='page'){publishNativePages(store);const scoped=id&&/^(root:DevProjects|rg:(projects|intakes)|x:(projects|intakes):)/.test(id),url=pathToFileURL(join(store.home,'registry',scoped?'DevProjects/index.html':'index.html'));if(id)url.hash=id;await new Promise<void>((resolve,reject)=>{const child=spawn('xdg-open',[url.href],{stdio:'ignore',detached:true});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});return success({page:url.href});}
+  if(action==='page'){publishNativePages(store);const url=publicationUrl(store);if(id)url.hash=id;await new Promise<void>((resolve,reject)=>{const child=spawn('xdg-open',[url.href],{stdio:'ignore',detached:true});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});return success({page:url.href});}
   if(['new','set','put','own'].includes(action||''))own();const page=action==='check'&&args.includes('--page'),value=nativeRegistryCli(store.home,args.slice(1).filter(a=>a!=='--page'));if(page||['new','set','put'].includes(action||''))publishNativePages(store);return typeof value==='string'?{handled:true,output:value,exitCode:0}:success(value);
  }
  if(['worker','lifecycle','coverage','integration','ownership','retrospective','owner'].includes(command||''))throw Error('Use the native workflow commands: agentlink work, agentlink workers, agentlink workflow. Project records must follow the installation’s canonical schemas.');

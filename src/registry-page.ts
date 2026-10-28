@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { relative } from "node:path";
+import { readFileSync, statSync, readdirSync, existsSync } from "node:fs";
+import { relative, join } from "node:path";
 import { validateStandardRecord } from "./registry/project-schemas.js";
 import { randomBytes } from "node:crypto";
 import { parse } from "yaml";
@@ -17,8 +17,11 @@ import { assess } from "./standard-workflow/project_coverage.js";
 type Row = Record<string, any>;
 const asset = (name: string) =>
   readFileSync(new URL("../web/" + name, import.meta.url), "utf8");
+const schemaCache = new Map<string,{stamp:string,value:Row}>();
 function schemaDocument(url: URL): Row {
-  return parse(readFileSync(url, "utf8"), { maxAliasCount: 10000 });
+ const st=statSync(url),stamp=st.mtimeMs+':'+st.size,key=url.href,old=schemaCache.get(key);
+ if(old?.stamp===stamp)return old.value;
+ const value=parse(readFileSync(url,'utf8'),{maxAliasCount:10000});schemaCache.set(key,{stamp,value});return value;
 }
 function resolveShape(ref: string, file: URL): { shape: Row; file: URL } {
   const url = new URL(ref, file),
@@ -103,7 +106,15 @@ function groupMetadata(schema: Row, resolve: (ref: string) => Row): Row {
   return groups;
 }
 /** Standard objects pass unchanged into the original template, with original navigation metadata. */
+export function registryPageStamp(store:Store):string {
+ const rows:string[]=[];
+ const visit=(p:string)=>{if(!existsSync(p))return;const st=statSync(p);if(st.isDirectory()){for(const n of readdirSync(p).sort())visit(join(p,n));}else if(p.endsWith('.yaml'))rows.push(p+':'+st.mtimeMs+':'+st.size);};
+ for(const p of ['DevProjects/metadata','DevProjects/schema','common.schema.yaml','root.schema.yaml'])visit(join(store.home,'registry',p));
+ return createHash('sha256').update(rows.join('\n')).digest('hex');
+}
+const pageCache=new Map<string,{stamp:string,value:any}>();
 export function registryPageData(store: Store) {
+ const stamp=registryPageStamp(store),cached=pageCache.get(store.home);if(cached?.stamp===stamp)return cached.value;
   const
     template = asset("index.html");
   const data: Row = Object.fromEntries(
@@ -225,6 +236,7 @@ export function registryPageData(store: Store) {
     catalog(
       store.home,
       discovered.filter((r) => r.root === "DevProjects").map((r) => r.record),
+      false, false,
     ),
   );
   data.retrospective_pages = Object.fromEntries(
@@ -283,6 +295,7 @@ export function registryPageData(store: Store) {
       ]),
     )
     .digest("hex");
+  pageCache.set(store.home,{stamp,value:data});
   return data;
 }
 export function renderRegistryPage(store: Store) {
