@@ -1,0 +1,8 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Common definitions
+definitions:
+  key:
+    description: "Unique registry record key: kind.name, lowercase with hyphenated
+      or dotted name segments."
+    type: string
+    pattern: ^[a-z][a-z-]*(\.[a-z0-9][a-z0-9-]*)+$

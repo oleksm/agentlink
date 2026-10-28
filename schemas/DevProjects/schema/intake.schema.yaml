@@ -1,0 +1,244 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Project intake
+x-kind:
+- intake
+description: 'standards/DevProjects/metadata/intakes/<name>.yaml: researcher-submitted
+  proposal; incomplete submissions preserve unknowns. Intake review must reject phased
+  approaches: propose one complete outcome, with logistics describing how to reach
+  it.'
+type: object
+additionalProperties: false
+required:
+- identity
+- submitted_at
+properties:
+  authorization:
+    type: object
+    additionalProperties: false
+    required: [request]
+    description: Direct project-creation request provenance; kept separate from technical narrative.
+    properties:
+      request:
+        type: string
+        minLength: 1
+      source:
+        type: string
+        minLength: 1
+  submitted_at:
+    type: string
+    format: date-time
+    pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$
+    description: UTC submission timestamp assigned by the CLI and preserved on retry.
+  identity:
+    type: object
+    additionalProperties: false
+    required:
+    - key
+    - id
+    - name
+    - submitted_by
+    properties:
+      id:
+        type: string
+        pattern: "^I(?:0[1-9]|[1-9][0-9]+)$"
+        description: Permanent short display ID, assigned automatically.
+      key:
+        $ref: ../../common.schema.yaml#/definitions/key
+      name: &id001
+        type: string
+        minLength: 1
+      submitted_by: *id001
+  goal: *id001
+  logic:
+    type: object
+    additionalProperties: false
+    properties:
+      problem: *id001
+      proposed_solution: *id001
+      research_evidence: &id004
+        type: array
+        items: *id001
+      exit_criteria: *id001
+      retrospective_review:
+        type: array
+        minItems: 1
+        description: Relevant completed retrospectives studied by the requestor, including their conclusions, and lessons applied to scope or delivery.
+        items:
+          type: object
+          additionalProperties: false
+          required: [retrospective, lesson, application]
+          properties:
+            retrospective:
+              type: string
+              pattern: ^retrospective\.[a-z0-9][a-z0-9-]*$
+            lesson: *id001
+            application: *id001
+      engineering_assumptions:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - statement
+          - verification
+          - basis
+          - applies_to
+          properties:
+            statement: &id002
+              type: string
+              minLength: 1
+            verification:
+              enum:
+              - measurement
+              - calculation
+              - simulation
+            basis: &id003
+              type: array
+              items: *id002
+            applies_to: *id003
+      feasibility:
+        type: object
+        additionalProperties: false
+        required:
+        - assumptions
+        - budget_bounds
+        properties:
+          assumptions:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - id
+              - statement
+              - state
+              - evidence
+              - resolution_step
+              - success_condition
+              properties:
+                id: *id002
+                statement: *id002
+                state:
+                  enum:
+                  - supported
+                  - open
+                evidence: *id003
+                resolution_step:
+                  type: string
+                success_condition: *id002
+          budget_bounds:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - resource
+              - bound
+              - basis
+              properties:
+                resource: *id002
+                bound: *id002
+                basis: *id002
+  logistics:
+    type: object
+    additionalProperties: false
+    properties:
+      approach:
+        description: New submissions require artifact-producing steps. String entries
+          are retained only for historical records.
+        type: array
+        items:
+          type:
+          - object
+          - string
+          additionalProperties: false
+          required:
+          - id
+          - owner
+          - deliverable
+          - completion_condition
+          - depends_on
+          properties:
+            id:
+              type: string
+              pattern: ^[a-z][a-z0-9-]*$
+            owner:
+              type: string
+              pattern: ^[a-z][a-z0-9-]*$
+              description: Exactly one accountable agent identity.
+            deliverable:
+              type: object
+              additionalProperties: false
+              required:
+              - artifact
+              - description
+              properties:
+                artifact: *id001
+                description: *id001
+            completion_condition: *id001
+            depends_on:
+              type: array
+              items:
+                type: string
+                pattern: ^[a-z][a-z0-9-]*$
+            validation_group:
+              type: string
+              pattern: ^[a-z][a-z0-9-]*$
+              description: Criteria sharing an artifact and a joint validation candidate.
+            experiment_budget_minutes:
+              type: integer
+              minimum: 1
+              maximum: 4
+              description: Experiment wall-time budget in minutes (1 to 4).
+            completion_kind:
+              enum:
+              - implementation
+              - integration
+              - outcome
+            dependency_artifacts:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - step
+                - artifact
+                - release_condition
+                properties:
+                  step: *id002
+                  artifact: *id002
+                  release_condition:
+                    enum:
+                    - delivered-and-hashed
+      dependencies: *id004
+      resources: *id004
+      constraints: *id004
+      risks: *id004
+  affected_areas:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        repository: *id001
+        components: *id004
+        interfaces: *id004
+  out_of_scope: *id004
+  open_questions: *id004
+  review:
+    description: PM intake validation decision; rejected submissions remain recorded
+      and cannot start a project.
+    type: object
+    additionalProperties: false
+    required:
+    - decision
+    - reason
+    properties:
+      decision:
+        type: string
+        enum:
+        - rejected
+      reason: *id001

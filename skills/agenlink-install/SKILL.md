@@ -6,8 +6,10 @@ description: Initialize a workspace and install the bundled skills for the origi
 # Install Agenlink
 
 Build the package with `npm install` and `npm run build`. Use `agentlink init
---home PATH` for workspace configuration. Supply the canonical schemas in the workspace’s
-registry tree before project operations. Use `agentlink
+--home PATH` for workspace configuration and missing canonical schemas. The package
+provides project, intake, retrospective, root and common schemas. Rerunning init
+repairs missing files without overwriting existing schemas. Never invent schemas
+from code. Use `agentlink
 skills install --dest DIRECTORY` to install the role and operation guides.
 
 Register `registry` and `project-manager` using the original `agentlink msg

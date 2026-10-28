@@ -1,0 +1,16 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Root
+x-kind: [root]
+description: "standards/<Root>/metadata/<Root>.yaml: one root of the registry: its name and what it holds."
+type: object
+additionalProperties: false
+required: [identity]
+properties:
+  identity:
+    type: object
+    additionalProperties: false
+    required: [key, name]
+    properties:
+      key: { $ref: "common.schema.yaml#/definitions/key" }
+      name: { type: string }
+  note: { type: string }

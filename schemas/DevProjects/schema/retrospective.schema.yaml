@@ -1,0 +1,201 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Project retrospective
+x-kind:
+- retrospective
+description: Durable project outcome, decisions, observed delivery metrics and reviewed
+  intake/prevalidation improvements. Tokens exclude cached input; limitations identify
+  incomplete observations.
+type: object
+additionalProperties: false
+required:
+- identity
+- project
+- project_status
+- state
+- created_at
+- facts
+- facts_sha256
+- report
+- stats
+properties:
+  owner_conclusion:
+    type: object
+    additionalProperties: false
+    required: [owner, state]
+    properties:
+      owner: {type: string, minLength: 1}
+      state: {enum: [pending, requested, completed]}
+      request: {type: string}
+      requested_at: {type: string}
+      received_at: {type: string}
+      document: {type: string}
+      source: {type: string}
+      sha256: {type: string}
+  project_goal: {type: string, minLength: 1}
+  summary:
+    type: object
+    additionalProperties: false
+    required: [went_well, did_not_work, proposed_project_corrections]
+    properties:
+      went_well: {type: array, items: {type: string, minLength: 1}}
+      did_not_work:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [what, why]
+          properties:
+            what: {type: string, minLength: 1}
+            why: {type: string, minLength: 1}
+      proposed_project_corrections: {type: array, items: {type: string, minLength: 1}}
+  identity:
+    type: object
+    additionalProperties: false
+    required:
+    - key
+    - id
+    - name
+    properties:
+      id:
+        type: string
+        pattern: "^R(?:0[1-9]|[1-9][0-9]+)$"
+        description: Permanent short display ID, assigned automatically.
+      key:
+        $ref: ../../common.schema.yaml#/definitions/key
+      name: &id001
+        type: string
+        minLength: 1
+  project:
+    type: string
+    x-ref:
+    - project
+  project_status:
+    description: Delivery outcome assessed from the reviewed scope and evidence, independent of lifecycle closure. Pending until explicitly assessed in the retrospective review.
+    enum: [pending, completed, fail]
+  validation_status: {enum: [completed, bypassed, fail]}
+  state:
+    enum:
+    - pending
+    - complete
+  created_at:
+    type: string
+    format: date-time
+  reviewed_at:
+    type: string
+    format: date-time
+  facts: *id001
+  facts_sha256:
+    type: string
+    minLength: 64
+    maxLength: 64
+  report: *id001
+  stats:
+    type: object
+    additionalProperties: false
+    required:
+    - uncached_tokens
+    - turns
+    - review_episodes
+    - task_count
+    - escalation_count
+    - decision_count
+    - blocker_count
+    - reopens
+    - tokens_m
+    - delivery_seconds
+    - per_ac
+    properties:
+      uncached_tokens: &id002
+        type: integer
+        minimum: 0
+      turns: *id002
+      review_episodes: *id002
+      task_count: *id002
+      escalation_count: *id002
+      decision_count: *id002
+      blocker_count: *id002
+      reopens: *id002
+      tokens_m:
+        type: number
+        minimum: 0
+        x-unit: '1'
+      delivery_seconds:
+        type: number
+        minimum: 0
+        x-unit: s
+      per_ac:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - criterion
+          - status_changes
+          - reopens
+          properties:
+            criterion: *id001
+            status: {type: string}
+            limitations:
+              type: array
+              items: {type: string}
+            time_seconds: {type: [integer, 'null'], minimum: 0, x-unit: s}
+            uncached_tokens: {type: [integer, 'null'], minimum: 0}
+            workflow_actions: *id002
+            blockers: *id002
+            status_changes: *id002
+            reopens: *id002
+  step_reviews:
+    description: Evidence-backed review of each delivery step, including deferred work. Recommendations are proposed improvements, not completed changes.
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [criterion, intended, outcome, worked, problems, correction, evidence]
+      properties:
+        criterion: {type: string, minLength: 1}
+        intended: {type: string, minLength: 1}
+        outcome: {type: string, minLength: 1}
+        worked: {type: string, minLength: 1}
+        problems: {type: string, minLength: 1}
+        why: {type: string, minLength: 1}
+        correction: {type: string, minLength: 1}
+        evidence:
+          type: array
+          minItems: 1
+          items: {type: string, minLength: 1}
+  findings:
+    type: object
+    additionalProperties: false
+    required:
+    - summary
+    - decisions_review
+    - what_worked
+    - what_did_not
+    - improvements
+    properties:
+      summary: *id001
+      decisions_review: *id001
+      what_worked: *id001
+      what_did_not: *id001
+      improvements:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - target
+          - change
+          - prevalidation
+          - evidence
+          - disposition
+          properties:
+            target: *id001
+            change: *id001
+            prevalidation: *id001
+            evidence: *id001
+            disposition:
+              enum:
+              - planned
+              - applied
+              - not-needed

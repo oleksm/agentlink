@@ -1,0 +1,1410 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Development project
+x-kind:
+- project
+description: 'standards/DevProjects/metadata/projects/<name>.yaml: durable intake,
+  execution, acceptance, integration and retirement of a development project. Closed
+  and cancelled records are retained.'
+type: object
+additionalProperties: false
+required:
+- identity
+- project_status
+- status
+- workflow
+- evidence
+- decisions
+- blockers
+- events
+- cleanup
+- intake
+properties:
+  project_status:
+    description: Assessed project outcome, independent of workflow lifecycle.
+    enum:
+    - pending
+    - completed
+    - fail
+  goal:
+    type: string
+    minLength: 1
+  status:
+    type: array
+    minItems: 1
+    description: Newest status first. Updates prepend a snapshot; previous rows are
+      immutable.
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - workflow_step
+      - status
+      - criterion
+      - owner
+      - reason
+      - timestamp
+      properties:
+        timestamp:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: UTC time recorded automatically; null only for historical rows
+            without a recorded time.
+        workflow_step:
+          type: string
+          minLength: 1
+        status:
+          enum:
+          - blocked
+          - not started
+          - pending
+          - in progress
+          - acceptance
+          - completed
+          - bypassed
+          - fail
+        criterion:
+          type: string
+          description: Nearest acceptance criterion being worked towards; empty when
+            none remains.
+        owner:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+          pattern: \S
+          description: Why this status applies; required on every row.
+  logic:
+    type: object
+    additionalProperties: false
+    required:
+    - problem
+    - proposed_solution
+    - research_evidence
+    properties:
+      engineering_assumptions:
+        $ref: intake.schema.yaml#/properties/logic/properties/engineering_assumptions
+      feasibility:
+        $ref: intake.schema.yaml#/properties/logic/properties/feasibility
+      problem:
+        type: string
+        minLength: 1
+      proposed_solution:
+        type: string
+        minLength: 1
+      research_evidence:
+        type: array
+        items:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+      exit_criteria:
+        type: string
+        minLength: 1
+        description: Logical description of completion supplied by the submitting
+          agent research; detailed verification is in acceptance_criteria.
+  logistics:
+    description: Steps, dependencies and resources for reaching the exit criteria
+      in logic.
+    type: object
+    additionalProperties: false
+    required:
+    - dependencies
+    - resources
+    - sequence
+    - risks
+    - owner_holds
+    properties:
+      dependencies:
+        type: array
+        items:
+          type: string
+          x-ref:
+          - project
+      resources:
+        type: array
+        items:
+          type: string
+          minLength: 1
+      sequence:
+        type: array
+        items:
+          type: string
+          minLength: 1
+      risks:
+        type: array
+        items:
+          type: string
+          minLength: 1
+      prohibited_actions:
+        type: array
+        uniqueItems: true
+        items:
+          enum:
+          - merge
+          - publish
+          - promote
+          - install
+          - delete-artifacts
+        description: Actions excluded from scope; acceptance does not release these
+          prohibitions.
+      owner_holds:
+        type: array
+        items:
+          type: string
+          minLength: 1
+      budgets:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - name
+          - limit
+          - unit
+          - source
+          properties:
+            name:
+              type: string
+              minLength: 1
+            limit:
+              type: number
+              minimum: 0
+              x-unit: '1'
+              description: Quantity in the stated budget unit, only when supplied.
+            unit:
+              enum:
+              - seconds
+              - tokens
+              - bytes
+              - currency
+            currency:
+              type: string
+            source:
+              type: string
+              minLength: 1
+  peer_requests:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - requester
+      - criterion
+      - owner
+      - owner_criterion
+      - required_artifact
+      - detail
+      - state
+      - created_at
+      - updated_at
+      - due_at
+      - revision
+      - artifacts
+      - evidence
+      properties:
+        id: &id001
+          type: string
+        requester: *id001
+        criterion: *id001
+        owner: *id001
+        owner_criterion: *id001
+        purpose:
+          type: string
+          enum: [implementation, verification]
+        required_artifact: *id001
+        detail: *id001
+        state:
+          enum:
+          - open
+          - acknowledged
+          - blocked
+          - delivered
+          - verified
+          - rejected
+          - cancelled
+        created_at: &id002
+          type: string
+          format: date-time
+        updated_at: *id002
+        due_at: *id002
+        owner_reserved:
+          type: boolean
+        review_reserved:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+        artifacts: &id003
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - path
+            - sha256
+            properties:
+              path: *id001
+              sha256: *id001
+        evidence: *id003
+  pending_updates:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - worker
+      - criterion
+      - state
+      - submitted_at
+      - payload
+      - detail
+      properties:
+        id: *id001
+        worker: *id001
+        criterion: *id001
+        state:
+          enum:
+          - queued
+          - applied
+          - rejected
+        submitted_at: *id002
+        payload: *id001
+        detail: *id001
+  blockers:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - reason
+      - owner
+      - status
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+        owner:
+          type: string
+          minLength: 1
+        status:
+          enum:
+          - open
+          - resolved
+        resolution:
+          type: string
+          minLength: 1
+        evidence:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+  acceptance_criteria:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - observable_pass_condition
+      - verification_method
+      - evidence_required
+      - acceptance_owner
+      - result
+      - evidence
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        observable_pass_condition:
+          type: string
+          minLength: 1
+        verification_method:
+          type: string
+          minLength: 1
+        evidence_required:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        step:
+          type: string
+          description: Intake approach step ID whose dependencies drive this deliverable.
+        worker:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+          description: Temporary worker ID responsible for delivery, distinct from
+            the requestor acceptance owner.
+        logic_refs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            enum:
+            - proposed_solution
+            - exit_criteria
+          description: Research logic statements that the requestor must review against
+            the delivered artifacts before active exit.
+        requestor_review:
+          type: boolean
+          description: Final validation is performed by the actual requestor root;
+            worker records the supporting temporary resource only.
+        execution:
+          type: object
+          additionalProperties: false
+          properties:
+            paused:
+              type: boolean
+            paused_for_return:
+              type: boolean
+            pause_reason:
+              type: string
+            paused_at:
+              type: string
+              format: date-time
+            waiting_for:
+              type: string
+            action:
+              type: string
+            progress:
+              type: string
+            last_progress:
+              type: string
+            next_checkpoint:
+              type: string
+            checkpoint_due:
+              type: string
+            waiting_on:
+              type: string
+            failed_attempts:
+              type: integer
+              minimum: 0
+            recovery_resolved_at:
+              type: string
+              format: date-time
+            job_pid:
+              type: integer
+              minimum: 1
+            job_start:
+              type: string
+            job_log:
+              type: string
+            reported_at:
+              type: string
+        health:
+          type: object
+          additionalProperties: false
+          properties:
+            state:
+              enum:
+              - working
+              - working on fix
+              - waiting
+              - paused
+              - stalled
+              - unresponsive
+              - completed
+            reason:
+              type: string
+            observed_at:
+              type: string
+            progress:
+              type: string
+            dependency:
+              type: string
+            recovery_stage:
+              type: string
+            recovery_at:
+              type: string
+            last_activity:
+              type: string
+            last_progress:
+              type: string
+            action:
+              type: string
+            next_checkpoint:
+              type: string
+            checkpoint_due:
+              type: string
+            waiting_on:
+              type: string
+        token_budget_limit:
+          type: integer
+          minimum: 600000
+          description: Explicitly authorized cumulative token ceiling; never reset usage.
+        token_review:
+          type: object
+          additionalProperties: false
+          required:
+          - state
+          - threshold
+          - requested_at
+          - root
+          properties:
+            limit:
+              type: integer
+              minimum: 600000
+            state:
+              enum:
+              - pause requested
+              - advising
+              - reviewing
+              - hold
+              - reviewed
+            threshold:
+              type: integer
+              minimum: 1
+            next_at:
+              type: integer
+              minimum: 1
+            sequence:
+              type: integer
+              minimum: 1
+            course_correction:
+              type: boolean
+            requested_at:
+              type: string
+              format: date-time
+            root:
+              type: string
+            source_root:
+              type: string
+            reviewer_kind:
+              enum: [worker, root]
+            reviewer_fallback:
+              type: string
+            reviewed_at:
+              type: string
+              format: date-time
+            guidance:
+              type: string
+            release_requests:
+              type: object
+              additionalProperties: false
+              required:
+              - mode
+              - requests
+              properties:
+                mode:
+                  enum:
+                  - any
+                  - all
+                requests:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items:
+                    type: string
+            release_after:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items:
+                type: string
+            history_since:
+              type: string
+            prior_guidance:
+              type: string
+            prior_turn_manifest:
+              type: string
+            turn_manifest:
+              type: string
+            turn_manifest_sha256:
+              type: string
+        token_usage: &token_usage
+          type: object
+          additionalProperties: false
+          required:
+          - input
+          - output
+          - cached_input
+          - since
+          - observed_at
+          - partial
+          properties:
+            input:
+              type: integer
+              minimum: 0
+            output:
+              type: integer
+              minimum: 0
+            cached_input:
+              type: integer
+              minimum: 0
+            since:
+              type: string
+              format: date-time
+            observed_at:
+              type: string
+              format: date-time
+            partial:
+              type: boolean
+          description: Observed worker usage since baseline; input includes cached
+            input. Partial totals exclude unobserved history.
+        acceptance_owner:
+          description: Requestor agent for project acceptance; explicit human approval
+            remains an additional completion condition.
+          type: string
+          minLength: 1
+        result:
+          enum:
+          - deferred
+          - pending
+          - pass
+          - fail
+        actual_result:
+          type: string
+          minLength: 1
+        evidence:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        validation_group:
+          type: string
+          pattern: ^[a-z][a-z0-9-]*$
+        experiment_budget_minutes:
+          type: integer
+          minimum: 1
+          maximum: 4
+          description: Experiment wall-time budget in minutes (1 to 4).
+        experiments:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - id
+            - question
+            - inputs
+            - expected_observation
+            - budget_minutes
+            - state
+            - started_at
+            - completed_at
+            - result
+            - decision
+            - elapsed_seconds
+            - repeat_reason
+            - receipt
+            properties:
+              id: &id004
+                type: string
+                minLength: 1
+              question: *id004
+              inputs:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - path
+                  - sha256
+                  properties:
+                    path: *id004
+                    sha256:
+                      type: string
+                      pattern: ^[a-f0-9]{64}$
+              purpose:
+                enum: [implementation, revalidation]
+              outcome:
+                enum: ["", pass, fail, timeout]
+              expected_observation: *id004
+              budget_minutes:
+                type: integer
+                minimum: 1
+                maximum: 4
+                description: Experiment wall-time budget in minutes (1 to 4).
+              state:
+                enum:
+                - running
+                - completed
+              started_at: *id004
+              completed_at:
+                type: string
+              result:
+                type: string
+              decision:
+                type: string
+              elapsed_seconds:
+                type: number
+                minimum: 0
+                x-unit: s
+              repeat_reason:
+                type: string
+              receipt: *id004
+  identity:
+    type: object
+    additionalProperties: false
+    required:
+    - key
+    - id
+    - name
+    - submitted_by
+    - manager
+    properties:
+      id:
+        type: string
+        pattern: "^P(?:0[1-9]|[1-9][0-9]+)$"
+        description: Permanent short display ID, assigned automatically.
+      key:
+        $ref: ../../common.schema.yaml#/definitions/key
+      name:
+        type: string
+        minLength: 1
+      submitted_by:
+        description: Requestor agent; owns the project and final acceptance.
+        type: string
+        minLength: 1
+      manager:
+        type: string
+        minLength: 1
+  non_goals:
+    type: array
+    items:
+      type: string
+      minLength: 1
+  ownership:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - source_agent
+      - project_role
+      - responsibilities
+      - owned_paths
+      - interfaces
+      properties:
+        source_agent:
+          type: string
+          minLength: 1
+        project_role:
+          type: string
+          minLength: 1
+        responsibilities:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        owned_paths:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        interfaces:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - name
+            - owner
+            properties:
+              name:
+                type: string
+                minLength: 1
+              owner:
+                type: string
+                minLength: 1
+        share:
+          type: number
+          minimum: 0
+          maximum: 1
+          x-unit: '1'
+          description: Share only when explicitly supplied.
+        share_source:
+          type: string
+          minLength: 1
+  products:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - repository
+      - base_branch
+      - merge_target
+      - required_checks
+      - owned_resources
+      - merge
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        repository:
+          type: string
+          minLength: 1
+        base_branch:
+          type: string
+          minLength: 1
+        base_commit:
+          type: string
+          pattern: ^[0-9a-f]{7,40}$
+        project_branch:
+          type: string
+          minLength: 1
+        worktree:
+          type: string
+          minLength: 1
+        lock_path:
+          type: string
+          minLength: 1
+        merge_target:
+          type: string
+          minLength: 1
+        required_checks:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        owned_resources:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        publication:
+          type: object
+          additionalProperties: false
+          required:
+          - status
+          - evidence
+          properties:
+            status:
+              enum:
+              - pending
+              - held
+              - published
+              - not-required
+            remote:
+              type: string
+              minLength: 1
+            commit:
+              type: string
+              pattern: ^[0-9a-f]{7,40}$
+            reason:
+              type: string
+              minLength: 1
+            evidence:
+              type: array
+              items:
+                type: string
+                pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        merge:
+          type: object
+          additionalProperties: false
+          required:
+          - status
+          - evidence
+          properties:
+            status:
+              enum:
+              - pending
+              - blocked
+              - merged
+              - not-required
+            candidate_commit:
+              type: string
+              pattern: ^[0-9a-f]{7,40}$
+            merge_commit:
+              type: string
+              pattern: ^[0-9a-f]{7,40}$
+            at:
+              type: string
+              minLength: 1
+            reason:
+              type: string
+              minLength: 1
+            evidence:
+              type: array
+              items:
+                type: string
+                pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+  workers:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - product
+      - source
+      - role
+      - status
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        product:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        context_maintenance:
+          type: object
+          additionalProperties: false
+          properties:
+            state:
+              enum:
+              - requested
+              - ready
+              - compacting
+              - complete
+            requested_at:
+              type: number
+              x-unit: s
+            sent_at:
+              type: number
+              x-unit: s
+            ready_at:
+              type: number
+              x-unit: s
+            completed_at:
+              type: number
+              x-unit: s
+            checkpoint:
+              type: string
+            baseline:
+              type: integer
+              minimum: 0
+            boundary:
+              type: string
+            reason:
+              type: string
+        track:
+          type: object
+          additionalProperties: false
+          required:
+          - active
+          - suspended
+          - resume
+          properties:
+            active:
+              type: string
+            suspended:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+            resume:
+              type: string
+        role:
+          type: string
+          minLength: 1
+        source:
+          $ref: '#/definitions/session'
+        fork:
+          $ref: '#/definitions/session'
+        context_method:
+          enum:
+          - native-fork
+          - context-transfer
+        runtime_manifest:
+          type: string
+          minLength: 1
+        resume_command:
+          type: string
+          minLength: 1
+        status:
+          enum:
+          - planned
+          - starting
+          - active
+          - blocked
+          - complete
+          - retired
+  evidence:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - kind
+      - location
+      - description
+      - recorded_by
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        kind:
+          enum:
+          - research
+          - test
+          - review
+          - visual
+          - performance
+          - onboarding
+          - messaging
+          - merge
+          - cleanup
+          - decision
+        location:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        recorded_by:
+          type: string
+          minLength: 1
+        at:
+          type: string
+          minLength: 1
+        product:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        commit:
+          type: string
+          pattern: ^[0-9a-f]{7,40}$
+        sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+  decisions:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - question
+      - status
+      - owner
+      - evidence
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        question:
+          type: string
+          minLength: 1
+        status:
+          enum:
+          - open
+          - decided
+        owner:
+          type: string
+          minLength: 1
+        outcome:
+          type: string
+          minLength: 1
+        evidence:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+  events:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - at
+      - actor
+      - kind
+      - detail
+      - evidence
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        at:
+          type: string
+          minLength: 1
+        actor:
+          type: string
+          minLength: 1
+        kind:
+          enum:
+          - intake
+          - transition
+          - worker
+          - verification
+          - decision
+          - merge
+          - cleanup
+          - cancellation
+        detail:
+          type: string
+          minLength: 1
+        status:
+          enum:
+          - blocked
+          - not started
+          - in progress
+          - acceptance
+          - completed
+          - bypassed
+          - fail
+        worker:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        product:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        criterion:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        evidence:
+          type: array
+          items:
+            type: string
+            pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+        workflow_step:
+          type: string
+          minLength: 1
+  execution_plan:
+    $ref: intake.schema.yaml#/properties/logistics/properties/approach
+    description: Owner-approved execution plan superseding intake logistics, with
+      original intake preserved.
+  retrospective:
+    type: string
+    x-ref:
+    - retrospective
+    description: Durable retrospective record under the Dev Projects root.
+  postmortem:
+    type: object
+    additionalProperties: false
+    required:
+    - outcome
+    - lessons
+    - follow_up
+    - evidence
+    properties:
+      outcome:
+        type: string
+        minLength: 1
+      lessons:
+        type: array
+        items:
+          type: string
+          minLength: 1
+      follow_up:
+        type: array
+        items:
+          type: string
+          x-ref:
+          - project
+      evidence:
+        type: array
+        items:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+  cleanup:
+    type: object
+    additionalProperties: false
+    required:
+    - status
+    - resources
+    - evidence
+    properties:
+      status:
+        enum:
+        - pending
+        - blocked
+        - complete
+        - not-required
+      reason:
+        type: string
+        minLength: 1
+      evidence:
+        type: array
+        items:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+      resources:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - id
+          - kind
+          - location
+          - project_owned
+          - status
+          - evidence
+          properties:
+            id:
+              type: string
+              pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+            kind:
+              enum:
+              - worker
+              - session
+              - branch
+              - worktree
+              - file
+              - lock
+            location:
+              type: string
+              minLength: 1
+            project_owned:
+              type: boolean
+            status:
+              enum:
+              - retained
+              - pending
+              - blocked
+              - removed
+            evidence:
+              type: array
+              items:
+                type: string
+                pattern: ^[A-Za-z][A-Za-z0-9_-]*$
+  unattributed_token_usage: *token_usage
+  workflow:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - description
+      properties:
+        token_usage: *token_usage
+        id:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+  intake:
+    type: string
+    x-ref:
+    - intake
+    description: Research submission from which this project was prepared.
+  coverage:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - logic_ref
+      - statement
+      - owner
+      - criterion
+      - measurement
+      - required_scope
+      - reports
+      properties:
+        id:
+          type: string
+          pattern: ^[a-z][a-z0-9-]*$
+        logic_ref:
+          enum:
+          - proposed_solution
+          - exit_criteria
+        statement: &id005
+          type: string
+          minLength: 1
+        owner: *id005
+        criterion: *id005
+        measurement: *id005
+        required_scope:
+          type: object
+          additionalProperties: false
+          required:
+          - dataset
+          - cases
+          properties:
+            products:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+                minLength: 1
+            dataset:
+              enum:
+              - real
+              - synthetic
+              - either
+            cases: &id006
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items: *id005
+        case_checks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [case, condition, method]
+            properties:
+              case: {type: string, minLength: 1}
+              condition: {type: string, minLength: 1}
+              method: {type: string, minLength: 1}
+        inputs:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [path]
+            properties:
+              product: {type: string, minLength: 1}
+              path: {type: string, minLength: 1}
+        reports:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - scope
+            - candidates
+            - result
+            - finding
+            - evidence
+            - at
+            properties:
+              scope:
+                type: object
+                additionalProperties: false
+                required:
+                - dataset
+                - cases
+                properties:
+                  dataset:
+                    enum:
+                    - real
+                    - synthetic
+                  cases: *id006
+              contract_hash: {type: string, pattern: '^[0-9a-f]{64}$'}
+              inputs:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [path, hash]
+                  properties:
+                    product: {type: string, minLength: 1}
+                    path: {type: string, minLength: 1}
+                    hash: {type: string, pattern: '^[0-9a-f]{40,64}$'}
+              candidates:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - product
+                  - commit
+                  properties:
+                    product:
+                      type: string
+                      minLength: 1
+                    commit:
+                      type: string
+                      pattern: ^[0-9a-f]{40}$
+              result:
+                enum:
+                - pass
+                - fail
+              finding: *id005
+              evidence: *id006
+              at:
+                type: string
+                format: date-time
+  integration_preflight:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [product, candidate, target]
+      properties:
+        product: {type: string, minLength: 1}
+        candidate: {type: string, pattern: '^[0-9a-f]{40}$'}
+        target: {type: string, pattern: '^[0-9a-f]{40}$'}
+  configuration:
+    type: object
+    additionalProperties: false
+    description: Recorded project budgets. Null means no budget has been set. Token
+      warnings are separate from token ceilings; times are seconds.
+    required:
+      - token_budget
+      - token_budget_per_ac
+      - token_warning_per_ac
+      - time_budget_per_turn
+      - time_budget_per_ac
+      - time_budget_total
+    properties:
+      token_budget:
+        title: Token budget
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: '1'
+      token_budget_per_ac:
+        title: Token budget per AC
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: '1'
+      token_warning_per_ac:
+        title: Token warning per AC
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: '1'
+      time_budget_per_turn:
+        title: Time budget per turn
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: s
+      time_budget_per_ac:
+        title: Time budget per AC
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: s
+      time_budget_total:
+        title: Time budget total
+        type:
+          - integer
+          - "null"
+        minimum: 0
+        x-unit: s
+definitions:
+  session:
+    type: object
+    additionalProperties: false
+    required:
+    - identity
+    - runtime
+    - session
+    - checkpoint
+    properties:
+      identity:
+        type: string
+        minLength: 1
+      runtime:
+        enum:
+        - codex
+        - claude
+      session:
+        type: string
+        minLength: 1
+      checkpoint:
+        type: string
+        minLength: 1

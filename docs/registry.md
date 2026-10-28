@@ -13,8 +13,9 @@ reference checks, and generated-field ownership. `registry show` prints original
 YAML; `registry new` writes required null/TODO placeholders without enabling a
 project. Native project IDs are stable through archive.
 
-Schemas belong to the installation’s registry tree and must be supplied before
-project operations. Initialization installs missing workflow policy files;
+Schemas belong to the installation’s registry tree. Initialization installs missing
+project, intake, retrospective, root and common schemas from the package, along
+with missing workflow policy files;
 customized workspace files remain intact. Generic checks reproduce the registry's schema subset and lint;
 application-specific calculations and validators belong to the consumer package.
 Independent project acceptance and evidence checks remain separate from schema

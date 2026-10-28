@@ -15,6 +15,7 @@ import type { RecordData } from "./common.js";
 const policies = fileURLToPath(
   new URL("../../skills/agenlink-manager/references/", import.meta.url),
 );
+const schemaBundle = fileURLToPath(new URL("../../schemas/", import.meta.url));
 /** Copy source bytes only when the destination is absent; preserve installation customizations. */
 export function provisionNativeWorkspace(home: string): string[] {
   const installed: string[] = [];
@@ -28,6 +29,14 @@ export function provisionNativeWorkspace(home: string): string[] {
     }
   };
   mkdirSync(join(home, "registry"), { recursive: true });
+  for (const name of [
+    "common.schema.yaml",
+    "root.schema.yaml",
+    "DevProjects/schema/project.schema.yaml",
+    "DevProjects/schema/intake.schema.yaml",
+    "DevProjects/schema/retrospective.schema.yaml",
+  ])
+    copyMissing(join(schemaBundle, name), join(home, "registry", name));
   for (const name of ["workflow-policy.json"])
     copyMissing(join(policies, name), join(home, name));
   return installed;
