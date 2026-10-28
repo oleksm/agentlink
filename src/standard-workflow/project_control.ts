@@ -24,7 +24,7 @@ export function decision_wait(
   steps: RecordData,
 ): RecordData[] {
   const decisions = (rec.decisions || []).filter(
-    (d: RecordData) => d.status === "open" && d.owner === "owner",
+    (d: RecordData) => d.status === "open" && String(d.owner || "").trim(),
   );
   if (!decisions.length) return [];
   const verification = verification_gaps(rec),
