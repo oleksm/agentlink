@@ -1,0 +1,7 @@
+{
+  "root_review_uncached_tokens_per_ac": 100000,
+  "compact_uncached_tokens_per_worker": 100000,
+  "worker_update_seconds": 180,
+  "experiment_budget_seconds": 180,
+  "token_reviewer": "requestor-root"
+}

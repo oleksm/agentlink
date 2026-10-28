@@ -1,0 +1,82 @@
+{
+  "identity": {
+    "key": "intake.replace-with-slug",
+    "name": "",
+    "submitted_by": ""
+  },
+  "authorization": {
+    "request": "",
+    "source": ""
+  },
+  "goal": "",
+  "logic": {
+    "problem": "",
+    "proposed_solution": "",
+    "research_evidence": [],
+    "exit_criteria": "",
+    "retrospective_review": [
+      {
+        "retrospective": "retrospective.replace-with-relevant-project",
+        "lesson": "",
+        "application": ""
+      }
+    ],
+    "engineering_assumptions": [
+      {
+        "statement": "Package measurements use the declared grid and units; no visual-only proxy counts as measured accuracy.",
+        "verification": "measurement",
+        "basis": ["docs/research/package-feasibility.md"],
+        "applies_to": ["package-contract"]
+      }
+    ],
+    "feasibility": {
+      "assumptions": [
+        {
+          "id": "representative-package",
+          "statement": "One small package opens in the real loader, contains the required fields, and stays below the stated memory limit.",
+          "state": "supported",
+          "evidence": ["docs/research/package-feasibility.md"],
+          "resolution_step": "no-resolution-required",
+          "success_condition": "The loader opens the sample; one decoded value matches the hand calculation; elapsed time and peak memory are recorded."
+        }
+      ],
+      "budget_bounds": [
+        {
+          "resource": "peak memory",
+          "bound": "At most 1 GiB for the small test package.",
+          "basis": "docs/research/package-feasibility.md"
+        }
+      ]
+    }
+  },
+  "logistics": {
+    "approach": [
+      {
+        "id": "package-contract",
+        "owner": "specialist",
+        "deliverable": {
+          "artifact": "docs/package-spec.md",
+          "description": "Versioned package specification defining data encoding, units, filenames, required fields and compatibility, with sample package and validation command."
+        },
+        "completion_condition": "The sample package passes the specification validation command; the specification includes every field required by the consumer loader.",
+        "depends_on": [],
+        "dependency_artifacts": [],
+        "completion_kind": "implementation",
+        "experiment_budget_minutes": 3
+      }
+    ],
+    "dependencies": [],
+    "resources": [],
+    "constraints": [],
+    "risks": []
+  },
+  "affected_areas": [
+    {
+      "repository": "",
+      "components": [],
+      "interfaces": []
+    }
+  ],
+  "out_of_scope": [],
+  "open_questions": []
+}

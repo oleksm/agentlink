@@ -1,0 +1,21 @@
+node_modules/
+dist/
+*.tgz
+.agenlink/
+
+# Checkout-only instructions and provider state
+/AGENTS.md
+/.agents/
+/.codex/
+/.claude/
+
+# Installation data and credentials belong outside the product
+*.local.yaml
+*.local.yml
+*.local.json
+.env
+.env.*
+!.env.example
+/runtime/
+/registry/
+*.log

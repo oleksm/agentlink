@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Registry</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #2b3138; --panel: #20262c; --line: #3a4652; --text: #dcebf2; --dim: #8fa3b0;
+  --head: #60ffb0; --id: #ffb040; --link: #5cc8f0; --sel: #1f4a3d; --bad: #ff5a4a; --code: #2e363e;
+  --th: #48505a; --tbl: #383e46; --tline: #535c67;
+  --nav: #20262c;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff; --panel: #ffffff; --line: #b9c4cd; --text: #0a1117; --dim: #3d4f5c;
+  --head: #04683b; --id: #0a58b8; --link: #0a58b8; --sel: #cdeedd; --bad: #b0281a; --code: #e9eef2;
+  --th: #dceaf3; --tbl: #f3f8fb; --tline: #b7cbd8;
+  --nav: #f4f6f8;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+header { text-transform: none; }
+header h1 { font-size: 15px; margin: 0; color: var(--head); letter-spacing: .05em; white-space: nowrap; }
+header input { flex: 1; min-width: 0; max-width: 420px; padding: 6px 10px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+header .count { color: var(--dim); white-space: nowrap; }
+header button { margin-left: auto; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; font: inherit; cursor: pointer; }
+main { display: grid; grid-template-columns: var(--nav-w, 400px) 6px 1fr; height: calc(100vh - 49px); }
+#grip { cursor: col-resize; background: var(--line); opacity: .5; }
+#grip:hover, #grip.drag { opacity: 1; background: var(--head); }
+nav { overflow: auto; padding: 8px 0; background: var(--nav); }
+article { overflow: auto; padding: 16px 24px 48px; }
+article > * { max-width: 110ch; }
+.row { padding: 2px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row:hover { background: var(--code); }
+.row.sel { background: var(--sel); box-shadow: inset 3px 0 0 var(--head); font-weight: 600; }
+.row .tw { display: inline-block; width: 1.2em; color: var(--dim); }
+.row.body { color: var(--head); font-weight: bold; }
+.row.empty { color: var(--dim); }
+.row .n { color: var(--dim); }
+.row .sid { color: var(--id); }
+h2 { color: var(--head); font-size: 17px; margin: 0 0 4px; }
+h3 { color: var(--dim); font-weight: 700 !important; font-size: 12px; letter-spacing: .08em; margin: 22px 0 6px; font-weight: normal; text-transform: uppercase; }
+.meta { color: var(--dim); }
+a { color: var(--link); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+table { border-collapse: collapse; margin: 4px 0; }
+th, td { text-align: left; padding: 3px 14px 3px 0; vertical-align: top; }
+th { color: var(--dim); font-weight: 700; border-bottom: 1px solid var(--line); text-transform: uppercase; font-size: 12px; background: var(--th); color: var(--text); border-bottom-color: var(--tline); }
+tr + tr td { border-top: 1px solid var(--tline); }
+table { background: var(--tbl); border: 1px solid var(--tline); }
+th, td { padding: 4px 14px 4px 8px; }
+th:first-child, td:first-child { padding-left: 4px; }
+td.num { text-align: right; }
+.problems { border: 1px solid var(--bad); color: var(--bad); padding: 8px 12px; margin: 8px 12px; border-radius: 4px; }
+.problems li { margin: 2px 0; }
+tr.gap td:last-child { color: var(--bad); font-weight: 600; } tr.gap td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+tr.okr td:last-child { color: var(--head); }
+.file { color: var(--dim); font-size: 12px; }
+p { margin: 4px 0 8px; max-width: 80ch; }
+.landmap { display: block; width: 100%; max-width: 760px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; margin: 6px 0 12px; }
+.landmap .zone { stroke-width: 6; fill-opacity: .22; }
+.landmap .u-port { fill: #4c9bd9; stroke: #4c9bd9; } .landmap .u-industrial { fill: #d98a3d; stroke: #d98a3d; } .landmap .u-commercial { fill: #9b8cf0; stroke: #9b8cf0; }
+.landmap .u-civic { fill: #5fbf8f; stroke: #5fbf8f; } .landmap .u-residential { fill: #d9c84a; stroke: #d9c84a; }
+.landmap .reach { fill: none; stroke: var(--dim); stroke-width: 3; stroke-dasharray: 14 12; }
+.landmap .padc { fill: none; stroke: var(--text); stroke-width: 5; }
+.landmap .plot { fill: var(--bg); fill-opacity: .55; stroke: var(--text); stroke-width: 6; cursor: pointer; } .landmap .plot.lit { stroke: var(--head); fill: var(--head); fill-opacity: .25; }
+.landmap .zl { fill: var(--dim); letter-spacing: .08em; } .landmap .pl { fill: var(--text); font-weight: 700; cursor: pointer; }
+.landmap .street { fill: none; stroke: var(--text); stroke-opacity: .7; stroke-width: 22; stroke-linecap: round; cursor: pointer; }
+.landmap .part { stroke: var(--text); stroke-width: 1.5; fill-opacity: .45; }
+.landmap .k-module { fill: #d98a3d; } .landmap .k-workshop { fill: #9b8cf0; } .landmap .k-warehouse { fill: #5fbf8f; } .landmap .k-logistics { fill: #4c9bd9; } .landmap .k-parking { fill: #8fa3b0; }
+.landmap .lot { fill: none; stroke: var(--head); stroke-width: 2.5; }
+.landmap .tl { fill: var(--text); }
+.swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border: 1px solid var(--text); opacity: .8; }
+.landmap .wire { fill: none; stroke: #ffd24a; stroke-width: 6; stroke-linejoin: round; cursor: pointer; }
+.landmap .scale { fill: none; stroke: var(--text); stroke-width: 6; }
+@media (max-width: 720px) {
+  main { grid-template-columns: 1fr; height: auto; }
+  #grip { display: none; }
+  nav { max-height: 45vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  header { flex-wrap: wrap; }
+}
+.workflow-prose { white-space: pre-wrap; margin: 0 0 10px; line-height: 1.5; }
+.workflow-prose:last-child { margin-bottom: 0; }
+.workflow-code { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: var(--bg); font-size: 12px; }
+.workflow-list { margin: 0; padding-left: 20px; }
+.workflow-list > li + li { margin-top: 10px; }
+.project-document {line-height:1.6; max-width:1100px} .project-document pre {white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;background:var(--code);color:var(--text)}
+.status-badge {display:inline-block;white-space:nowrap;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:600;line-height:1.4;letter-spacing:0;background:#e2e8f0;color:#334155;border:1px solid #94a3b8}.status-badge.in-progress {background:#dbeafe;color:#1e40af;border-color:#93c5fd}.status-badge.completed {background:#dcfce7;color:#166534;border-color:#86efac}.status-badge.blocked {background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.project-workflow{margin:12px 0 18px;max-width:none;width:100%}.workflow-track{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;padding:8px 2px 12px}.workflow-node{flex:0 0 auto;min-width:106px;max-width:230px;font-size:13px;line-height:1.35;letter-spacing:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:10px;border:1px solid var(--tline,#b7cbd8);border-radius:9px;background:var(--panel,#fff)}.workflow-node>strong{color:var(--head,#04683b)}.workflow-arrow{flex:0 0 auto;padding-top:17px;color:var(--dim,#3d4f5c);font-size:18px}.workflow-criteria{display:flex;flex-direction:column;gap:7px;border-top:1px solid var(--line,#b9c4cd);padding-top:7px;width:100%}.workflow-criterion{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:11px}.workflow-alternate{font-size:12px;color:var(--dim,#3d4f5c);display:flex;align-items:center;gap:8px}
+.workflow-owner{color:var(--dim,#3d4f5c);font-size:10px;overflow-wrap:anywhere}
+.status-badge.acceptance{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.workflow-action summary{list-style:none;cursor:pointer}.workflow-action summary::-webkit-details-marker{display:none}.workflow-action-text{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}.workflow-action[open] .workflow-action-text{display:block;-webkit-line-clamp:unset;overflow:visible}.workflow-action-toggle{display:block;font-size:10px;color:var(--dim,#536575);margin-top:3px}.workflow-action-toggle::after{content:"Show more"}.workflow-action[open] .workflow-action-toggle::after{content:"Show less"}
+.project-reason { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; max-height: 4.8em; }
+
+/* Project status uses the available pane width; keep owner IDs readable. */
+table.project-status-wide { width:100%; max-width:none; }
+.project-status-wide .project-status-owner { min-width:30ch; width:32%; overflow-wrap:anywhere; }
+
+/* Status history keeps local timestamps and owner identities readable. */
+table.project-history-wide { width:100%; max-width:none; }
+.project-history-wide .history-timestamp { min-width:20ch; white-space:nowrap; }
+.project-history-wide .history-owner { min-width:30ch; width:28%; overflow-wrap:anywhere; }
+
+/* Acceptance criteria give the conditions, verification and health more room. */
+table.project-criteria-wide { max-width:none; width:100%; }
+.project-criteria-wide .criteria-condition { min-width:40ch; }
+.project-criteria-wide .criteria-verification { min-width:40ch; }
+.project-criteria-wide .criteria-health { min-width:28ch; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Registry</h1>
+  <input id="q" type="search" placeholder="Search ids, titles, text, parameters…" autocomplete="off">
+  <span class="count" id="count"></span>
+  <button id="theme" title="Light or dark">◐</button>
+</header>
+<main>
+  <nav id="tree"></nav>
+  <div id="grip" title="Drag to resize"></div>
+  <article id="detail"></article>
+</main>
+<script>
+const DATA = /*DATA*/null;
+/*PROJECT_TIME*/
+// Dark by default; preserve the chosen theme.
+try { if (localStorage.getItem("standards-theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}
+document.getElementById("theme").addEventListener("click", () => {
+  const light = document.documentElement.dataset.theme !== "light";
+  if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("standards-theme", light ? "light" : "dark"); } catch (e) {}
+});
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// What's open, kept between visits (if storage works).
+let open = new Set();
+try { open = new Set(JSON.parse(localStorage.getItem("standards-open2") || "[]")); } catch (e) {}
+const keepOpen = () => { try { localStorage.setItem("standards-open2", JSON.stringify([...open])); } catch (e) {} };
+const rootNames = () => Object.fromEntries(Object.entries(DATA.roots || {}).map(([key, value]) => [key, value.name || key]));
+let ROOT_NAMES = rootNames();
+if (!open.size) for (const key of Object.keys(ROOT_NAMES)) open.add("root:"+key);
+function rows(q) {
+  const out = [];
+  // Each root retains its original registers and archive navigation.
+  for (const [root, label] of Object.entries(ROOT_NAMES)) {
+    const regs = (DATA.registers || []).filter(r => r.root === root);
+    if (!regs.length) continue;
+    const rq = r => !q || q.split(/\s+/).every(w => `${r.name} ${r.key}`.toLowerCase().includes(w));
+    out.push({ k: "root:" + root, depth: 0, kind: "body", label, n: regs.reduce((s, r) => s + r.records.length, 0) });
+    let archiveShown = false;
+    if (open.has("root:" + root) || q) for (const r of regs) {
+      if (r.archive && !archiveShown) { out.push({ k: "archive:" + root, depth: 1, kind: "maker", label: "Archived", leaf: false }); archiveShown = true; }
+      if (r.archive && !open.has("archive:" + root) && !q) continue;
+      const hits = r.records.filter(rq);
+      if (q && !hits.length) continue;
+      out.push({ k: "rg:" + r.kind, depth: r.archive ? 2 : 1, kind: "maker", label: r.title, ticker: `${r.records.length}`, leaf: false });
+      if (open.has("rg:" + r.kind) || q) for (const x of hits) out.push({ k: `x:${r.record_kind || r.kind}:${x.slug}`, depth: r.archive ? 3 : 2, kind: "maker", label: x.name, ticker: x.key.split(".").slice(1).join("."), leaf: true });
+    }
+  }
+  // Registers: every record kind with a page of its own, as written (the roots above have their own trees).
+  const REG = (DATA.registers || []).filter(r => !(r.root in ROOT_NAMES));
+  if (REG.length) {
+    const rq = r => !q || q.split(/\s+/).every(w => `${r.name} ${r.key}`.toLowerCase().includes(w));
+    out.push({ k: "rg", depth: 0, kind: "body", label: "Registers", n: REG.reduce((s, r) => s + r.records.length, 0) });
+    if (open.has("rg") || q) for (const r of REG) {
+      const hits = r.records.filter(rq);
+      if (q && !hits.length) continue;
+      out.push({ k: "rg:" + r.kind, depth: 1, kind: "maker", label: r.title, ticker: `${r.records.length} · ${r.root}`, leaf: false });
+      if (open.has("rg:" + r.kind) || q) for (const x of hits) out.push({ k: `x:${r.kind}:${x.slug}`, depth: 2, kind: "maker", label: x.name, ticker: x.key.split(".").slice(1).join("."), leaf: true });
+    }
+  }
+  return out;
+}
+// Workflow procedures retain paragraphs, examples and source links in the registry view.
+// Escape source text before interpreting the small Markdown subset used by the proposal.
+const workflowInline = text => esc(text).replace(/\[([^\]]+)\]\(([^\s)]+)\)/g, (all, label, target) => {
+  const href = /^https?:\/\//.test(target) ? target : /^(docs|standards|crates|tools|config)\//.test(target) ? "../" + target : "";
+  return href ? `<a href="${href}">${label}</a>` : `${label} (${target})`;
+}).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+const workflowProse = text => String(text).split(/(```[\s\S]*?```)/g).map(part => {
+  if (part.startsWith("```")) return `<pre class="workflow-code">${esc(part.replace(/^```[^\n]*\n?/, "").replace(/```$/, ""))}</pre>`;
+  return part.split(/\n\s*\n/).filter(x => x.trim()).map(block => {
+    const lines = block.trim().split("\n");
+    if (lines.length > 1 && lines.every(line => line.trim().startsWith("|"))) {
+      const rows = lines.filter(line => !/^\s*\|[\s:|\-]+\|\s*$/.test(line));
+      return `<table>${rows.map((line, i) => `<tr>${line.trim().replace(/^\||\|$/g, "").split("|").map(cell => `<${i ? "td" : "th"}>${workflowInline(cell.trim())}</${i ? "td" : "th"}>`).join("")}</tr>`).join("")}</table>`;
+    }
+    return `<div class="workflow-prose">${workflowInline(block)}</div>`;
+  }).join("");
+}).join("");
+let current = decodeURIComponent(location.hash.slice(1));
+function reveal(k) {
+ ROOT_NAMES = rootNames();
+  if (k.startsWith("x:") || k.startsWith("rg:")) {      // (a register under its root's own tree, or under Registers)
+    const parts = k.split(":");
+    const wanted = parts[1] === "closed-projects" ? "archived-projects" : parts[1];
+    const reg = (DATA.registers || []).find(r => (r.kind === wanted || r.record_kind === wanted) &&
+      (!k.startsWith("x:") || r.records.some(x => x.slug === parts.slice(2).join(":"))));
+    open.add(reg && reg.root in ROOT_NAMES ? "root:" + reg.root : "rg");
+    if (reg?.archive) open.add("archive:" + reg.root);
+    if (k.startsWith("x:")) open.add("rg:" + (reg?.kind || wanted));
+    keepOpen(); return;
+  }
+}
+reveal(current);
+function statusBadge(status) {
+  const name = ({"in progress":"in-progress",completed:"completed",blocked:"blocked",acceptance:"acceptance","not started":"not-started"})[status] || "not-started";
+  return `<span class="status-badge ${name}">${esc(status)}</span>`;
+}
+function select(key, anchor) { registryNav.go(key, anchor); }
+
+function render() {
+  ROOT_NAMES = rootNames();
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const list = rows(q);
+  let html = DATA.problems.length ? `<div class="problems"><b>${DATA.problems.length} problem(s)</b>:<ul>${DATA.problems.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>` : "";
+  for (const n of list) {
+    const pad = `padding-left:${12 + n.depth * 18}px`;
+    const sel = n.k === current ? " sel" : "";
+    const tw = n.kind === "std" || (n.kind === "maker" && (n.leaf !== false || n.flat)) ? "" : (open.has(n.k) || q ? "▾" : "▸");
+    if (n.href) {
+      html += `<a class="row" style="${pad}" href="${esc(n.href)}"><span class="tw"></span>${esc(n.label)}</a>`;
+    } else {
+      const cls = n.kind === "body" ? " body" : "";
+      const count = n.n !== undefined ? ` <span class="n">(${n.n})</span>` : "";
+      html += `<div class="row${cls}${sel}" style="${pad}" data-k="${esc(n.k)}" title="${esc(n.title || n.label)}"><span class="tw">${tw}</span>${esc(n.label)}${n.ticker ? ` <span class="n">${esc(n.ticker)}</span>` : ""}${count}</div>`;
+    }
+  }
+  document.getElementById("tree").innerHTML = html;
+  document.getElementById("count").textContent = `${(DATA.registers || []).reduce((n, r) => n+r.records.length, 0)} records`;
+  document.getElementById("detail").innerHTML = detail(current);
+  for (const table of document.querySelectorAll('#detail table')) {
+    const headers = [...(table.rows[0]?.cells || [])].map(cell => cell.textContent.trim().toLowerCase());
+    if (headers.includes('timestamp (local)') && headers.includes('reason')) {
+      table.classList.add('project-history-wide');
+      for (const [label, cls] of [['timestamp (local)', 'history-timestamp'], ['owner', 'history-owner']]) {
+        const index = headers.indexOf(label);
+        if (index >= 0) for (const row of table.rows) row.cells[index]?.classList.add(cls);
+      }
+    }
+    if (headers.includes('observable pass condition') && headers.includes('verification method')) {
+      table.classList.add('project-criteria-wide');
+      const conditionIndex = headers.indexOf('observable pass condition');
+      table.rows[0].cells[conditionIndex].textContent = 'Pass condition';
+      for (const [label, cls] of [['observable pass condition', 'criteria-condition'], ['verification method', 'criteria-verification'], ['health', 'criteria-health']]) {
+        const index = headers.indexOf(label);
+        if (index >= 0) for (const row of table.rows) row.cells[index]?.classList.add(cls);
+      }
+    }
+    if (headers.includes('tokens spent')) {
+      table.classList.add('project-status-wide');
+      const ownerIndex = headers.indexOf('owner');
+      if (ownerIndex >= 0) for (const row of table.rows) row.cells[ownerIndex]?.classList.add('project-status-owner');
+    }
+    const indices = [...(table.rows[0]?.cells || [])].map((cell, index) => /evidence/i.test(cell.textContent) && cell.tagName === 'TH' ? index : -1).filter(index => index >= 0).reverse();
+    for (const index of indices) for (const row of table.rows) row.cells[index]?.remove();
+  }
+}
+
+function detail(k) {
+  if ((DATA.project_documents || {})[k]) return DATA.project_documents[k];
+  if (!k) return `<h2>Registry</h2><p class="meta">Pick something on the left.</p>`;
+  const [kind, ...rest] = k.split(":");
+  if (k.startsWith("archive:")) {
+    const regs = (DATA.registers || []).filter(r => r.root === k.slice(8) && r.archive);
+    return `<h2>Archived</h2><table><tr><th>Register</th><th>Records</th></tr>` + regs.map(r => `<tr><td><a data-k="rg:${esc(r.kind)}">${esc(r.title)}</a></td><td>${r.records.length}</td></tr>`).join("") + `</table>`;
+  }
+  if (k.startsWith("root:")) {
+    const root = k.slice(5), info = (DATA.roots || {})[root] || {};
+    const regs = (DATA.registers || []).filter(r => r.root === root && !r.archive);
+    if ((DATA.registers || []).some(r => r.root === root && r.archive)) regs.push({kind: "__archive", title: "Archived", records: [], about: ""});
+    return `<h2>${esc(info.name || root)}</h2><p>${esc(info.note || "")}</p><table><tr><th>Register</th><th>Records</th><th>What it holds</th></tr>` + regs.map(r => `<tr><td><a data-k="${esc(r.kind === "__archive" ? "archive:" + root : "rg:" + r.kind)}">${esc(r.title)}</a></td><td>${r.kind === "__archive" ? "" : r.records.length}</td><td class="meta">${esc((r.about || "").split(": ").slice(1).join(": ").slice(0, 220))}</td></tr>`).join("") + `</table>`;
+  }
+  if (k === "rg") {
+    const REG = DATA.registers || [];
+    return `<h2>Registers</h2><p>Every kind of record the registry keeps, as written: one page a record, each group a table with its schema's words.</p><table><tr><th>Register</th><th>Root</th><th>Records</th></tr>` + REG.map(r => `<tr><td><a data-k="${esc("rg:" + r.kind)}">${esc(r.title)}</a></td><td>${esc(r.root)}</td><td>${r.records.length}</td></tr>`).join("") + `</table>`;
+  }
+  if (kind === "rg") {
+    if (rest[0] === "closed-projects") rest[0] = "archived-projects";
+    const r = (DATA.registers || []).find(x => x.kind === rest[0]); if (!r) return "";
+    if ((r.record_kind || r.kind) === "projects") {
+      const records = r.records;
+      return `<h2>${r.archive ? "Archived / " : ""}${esc(r.title)}</h2><p>${esc(r.about)}</p><table><tr><th>Project</th><th>Project Status</th><th>Lifecycle</th><th>Manager</th><th>Criteria passed</th><th>Products merged</th></tr>` + records.map(x => `<tr><td><a data-k="${esc(`x:projects:${x.slug}`)}">${esc(x.name)}</a></td><td>${esc(x.project_status ?? "pending")}</td><td>${esc(x.status?.[0]?.workflow_step ?? "")}: ${esc(x.status?.[0]?.status ?? "")}</td><td>${esc(x.identity.manager)}</td><td>${(x.acceptance_criteria || []).filter(c => c.result === "pass").length}/${(x.acceptance_criteria || []).length}</td><td>${(x.products || []).filter(p => p.merge?.status === "merged").length}/${(x.products || []).length}</td></tr>`).join("") + `</table>`;
+    }
+    return `<h2>${r.archive ? "Archived / " : ""}${esc(r.title)}</h2><div class="meta">${esc(r.root)}${r.standard ? ` · <a data-k="${esc("s:" + r.standard)}">${esc(r.standard)}</a>` : ""} · ${r.records.length} records</div><p>${esc(r.about)}</p><table><tr><th>Record</th><th>Key</th></tr>` + r.records.map(x => `<tr><td><a data-k="${esc(`x:${r.record_kind || r.kind}:${x.slug}`)}">${esc(x.name)}</a></td><td class="meta">${esc(x.key)}</td></tr>`).join("") + `</table>`;
+  }
+  if (kind === "x") {
+    if (rest[0] === "closed-projects") rest[0] = "projects";
+    rest[0] = rest[0].replace(/^archived-/, "");
+    const source = (DATA.registers || []).find(x => (x.record_kind || x.kind) === rest[0] && x.records.some(e => e.slug === rest.slice(1).join(":"))); if (!source) return "";
+    const r = {...source, kind: source.record_kind || source.kind};
+    const e = r.records.find(x => x.slug === rest.slice(1).join(":")); if (!e) return "";
+    if (r.kind === "retrospectives" && DATA.retrospective_pages?.[e.identity.key]) return DATA.retrospective_pages[e.identity.key];
+    const G = e.platform ? {} : ((DATA.register_groups || {})[r.kind] || {}), KP = DATA.key_pages || {};
+    const keyish = v => typeof v === "string" && /^[a-z][a-z0-9-]*\.[a-z0-9.-]+$/.test(v);
+    const workflow = typeof e.status === "string" && "owner" in e && "implementation" in e;
+    const val = v => {
+      if (r.kind === "retrospectives" && v === e.stats?.per_ac) return (DATA.retrospective_ac_tables || {})[e.identity.key] || "";
+      if (r.root === "DevProjects" && typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(v)) return projectTimeMarkup(v);
+      if (v === null || v === undefined) return "–";
+      if (typeof v === "string" && DATA.project_owner_labels?.[v]) return `<span title="${esc(v)}">${esc(DATA.project_owner_labels[v])}</span>`;
+      if (Array.isArray(v)) {
+        if (!v.length) return "–";
+        return workflow && v.every(x => typeof x === "string") && !v.every(keyish)
+          ? `<ul class="workflow-list">${v.map(x => `<li>${val(x)}</li>`).join("")}</ul>` : v.map(val).join(", ");
+      }
+      if (typeof v === "object") return Object.entries(v).map(([a, b]) => `${esc(a)}: ${val(b)}`).join("; ");
+      if (r.kind === "projects" && typeof v === "string" && (e.acceptance_criteria || []).some(c => c.id === v)) return `<a href="#${esc(k)}" onclick="document.getElementById('ac-${esc(v)}')?.scrollIntoView();return false">${esc(v)}</a>`;
+      if (r.root === "DevProjects" && typeof v === "string" && (DATA.project_artifact_references || {})[e.identity?.key]?.[v]) return DATA.project_artifact_references[e.identity.key][v];
+      if (keyish(v) && KP[v]) return `<a data-k="${esc(KP[v])}">${esc(v)}</a>`;
+      if (r.root === "DevProjects" && typeof v === "string" && (DATA.project_file_references || {})[v]) return DATA.project_file_references[v];
+      if (typeof v === "number") return esc(v !== 0 && Math.abs(v) < 1e-6 ? v.toExponential(6) : v.toLocaleString(undefined, { maximumFractionDigits: 6 }));
+      if (workflow && /^(docs|standards|crates|tools|config)\/[\w./-]+(?:#[\w-]+)?$/.test(v)) return `<a href="../${esc(v)}">${esc(v)}</a>`;
+      if (workflow && /^https?:\/\/[^\s]+$/.test(v)) return `<a href="${esc(v)}">${esc(v)}</a>`;
+      return workflow ? workflowProse(v) : esc(String(v));
+    };
+    const idn = e.identity && typeof e.identity === "object" ? e.identity : {};
+    let h = `<h2>${esc(e.name)}</h2><div class="meta">${esc(r.title.toLowerCase())} · <a data-k="${esc("rg:" + r.kind)}">${esc(r.title)}</a> · ${esc(e.key)}</div>`;
+    if (e.project_status) h += `<p>Project Status <span class="status-badge ${e.project_status === "fail" ? "blocked" : "completed"}">${esc(e.project_status)}</span></p>`;
+    if (idn.about || idn.description) h += `<p>${esc(idn.about || idn.description)}</p>`;
+    if (workflow) h += `<p class="meta">${esc(e.status)} · owner: ${esc(e.owner)} · implementation: ${esc(e.implementation)}${e.order !== undefined ? ` · order: ${esc(e.order)}` : ""}</p>`;
+    const skip = new Set(["slug", "key", "name", "file", "identity", "basis", "revision", "project_status", "configuration", "platform", "source_key", "archived", "authorization", ...(workflow ? ["status", "owner", "implementation", "order"] : [])]);
+    const entries = Object.entries(e);
+    if (r.kind === "projects") { const order = {goal: 0, status: 1, logic: 2, logistics: 3, blockers: 4}; entries.sort(([a], [b]) => (order[a] ?? 5) - (order[b] ?? 5)); }
+    if (workflow) entries.sort(([a], [b]) => Number(a === "sources") - Number(b === "sources"));
+    for (const [g, rawValue] of entries) {
+      const v = r.kind === "projects" && ["events", "blockers"].includes(g) && Array.isArray(rawValue) ? rawValue.map((row, i) => ({row, i})).sort((a, b) => ((Date.parse(b.row.at) || 0) - (Date.parse(a.row.at) || 0)) || b.i - a.i).map(x => x.row) : g === "pending_updates" && Array.isArray(rawValue) ? rawValue.map(({payload, ...row}) => row) : rawValue;
+      if (skip.has(g) || v === null || v === undefined) continue;
+      if (r.kind === "projects" && g === "evidence") continue;
+      if (!e.platform && r.kind === "projects" && g === "coverage") {
+        const coverage = (DATA.project_coverage_status || {})[e.identity.key] || [];
+        h += `<h3>Outcome Coverage</h3><p>Evidence readiness; final acceptance remains independent.</p><table><tr><th>Outcome</th><th>Owner</th><th>Required scope</th><th>Readiness</th><th>Missing</th></tr>` + v.map(row => {
+          const observed = coverage.find(x => x.id === row.id) || {};
+          return `<tr><td>${esc(row.statement)}</td><td>${esc(row.owner)}</td><td>${val(row.required_scope)}</td><td>${esc(observed.status || 'unmeasured')}</td><td>${val(observed.missing || [])}</td></tr>`;
+        }).join('') + '</table>';
+        continue;
+      }
+      if (r.kind === "projects" && g === "status") {
+        h += (DATA.project_status_summaries || {})[e.identity.key] || "";
+        h += `<h3>Status History</h3><table><tr><th>Timestamp (local)</th><th>Workflow</th><th>Status</th><th>Acceptance Criteria</th><th>Owner</th><th>Reason</th></tr>` + v.map(row => `<tr><td>${projectTimeMarkup(row.timestamp)}</td><td>${esc(row.workflow_step)}</td><td>${statusBadge(row.status)}</td><td>${row.criterion ? val(row.criterion) : "—"}</td><td>${esc(row.owner)}</td><td><span class="project-reason">${val(row.reason)}</span></td></tr>`).join("") + `</table>`;
+        const workerReports = new Set((e.events || []).filter(row => row.actor !== "project-manager").map(row => (row.criterion || "") + ": " + (row.detail || "")));
+        const actions = (e.events || []).filter(row => !(row.actor === "project-manager" && row.kind === "decision" && workerReports.has(row.detail))).map((row, i) => ({row, i})).sort((a,b) => ((Date.parse(b.row.at)||0)-(Date.parse(a.row.at)||0)) || b.i-a.i).map(x=>x.row);
+        h += `<section data-owner-actions data-project="${esc(e.identity.key.split(".").slice(1).join("."))}"></section><h3>Workflow Actions</h3><table><tr><th>Time</th><th>AC</th><th>Actor</th><th>Action</th><th>Details</th></tr>` + actions.map(row => `<tr><td>${projectTimeMarkup(row.at, true)}</td><td>${row.criterion ? val(row.criterion) : ""}</td><td>${esc(row.actor || "")}</td><td>${esc(row.kind || "")}</td><td><details class="workflow-action"><summary><span class="workflow-action-text">${val(row.detail || "")}</span><span class="workflow-action-toggle"></span></summary></details></td></tr>`).join("") + `</table>`;
+        continue;
+      }
+      if (!e.platform && r.kind === "projects" && g === "events") continue;
+      const gd = G[g] || {}, props = gd.props || {};
+      if (g === "legends" && Array.isArray(v)) {      // (a legend drawn as its page draws it: swatches and labels)
+        const sw = r => r.colour ? `<span style="display:inline-block;width:${r.kind === "line" ? 26 : 16}px;height:${r.kind === "line" ? 3 : 12}px;background:rgb(${r.colour.join(",")});border-radius:2px;vertical-align:middle"></span>` : "";
+        h += `<h3>legends</h3>` + v.map(L => `<h4 style="margin:14px 0 4px">${esc(L.title)}${L.sub ? ` <span class="meta">· ${esc(L.sub)}</span>` : ""}</h4><table>` + (L.rows || []).map(r => `<tr><td style="width:34px">${sw(r)}</td><td${r.kind === "head" ? ' class="meta"' : ""}>${esc(r.label)}</td></tr>`).join("") + `</table>` + (L.source ? `<div class="meta">${esc(L.source)}</div>` : "")).join("");
+        continue;
+      }
+      h += `<h3>${r.kind === "projects" && g === "products" ? "Artifacts" : esc(g.replace(/_/g, " "))}</h3>` + (!workflow && gd.description ? `<p class="meta">${esc(gd.description)}</p>` : "");
+      if (Array.isArray(v) && v.length && typeof v[0] === "object" && v[0] !== null) {
+        const cols = [...new Set(v.flatMap(x => Object.keys(x)))].filter(c => !/evidence/i.test(c));
+        h += `<table><tr>${cols.map(c => `<th title="${esc(props[c] || "")}">${esc(c.replace(/_/g, " "))}</th>`).join("")}</tr>` + v.map(x => `<tr${r.kind === "projects" && g === "acceptance_criteria" ? ` id="ac-${esc(x.id)}"` : ""}>${cols.map(c => `<td>${val(x[c])}</td>`).join("")}</tr>`).join("") + `</table>`;
+      } else if (typeof v === "object" && !Array.isArray(v)) {
+        const units = gd.units || {}, hasUnits = Object.keys(v).some(a => units[a]);
+        h += `<table><tr><th>Property</th><th>Value</th>${hasUnits ? "<th>Unit</th>" : ""}</tr>` + Object.entries(v).map(([a, b]) => `<tr><td title="${esc(props[a] || "")}">${esc(a.replace(/_/g, " "))}</td><td>${val(b)}</td>${hasUnits ? `<td class="meta">${esc(units[a] || "")}</td>` : ""}</tr>`).join("") + `</table>`;
+      } else {
+        h += `<table><tr><th title="${esc(gd.description || "")}">Value</th>${gd.unit ? "<th>Unit</th>" : ""}</tr><tr><td>${val(v)}</td>${gd.unit ? `<td class="meta">${esc(gd.unit)}</td>` : ""}</tr></table>`;
+      }
+    }
+    const idRows = Object.entries(idn).filter(([a]) => !["key", "name", "about", "description"].includes(a) && !(r.kind === "projects" && a === "manager"));
+    if (idRows.length) h += `<h3>identity</h3><table><tr><th>Property</th><th>Value</th></tr>` + idRows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${val(b)}</td></tr>`).join("") + `</table>`;
+    if (Array.isArray(e.basis) && e.basis.length) h += `<h3>Where its figures come from</h3><table><tr><th>Figures</th><th>How</th><th>Source or note</th></tr>` + e.basis.map(bs => `<tr class="${bs.tier === "invented" ? "gap" : ""}"><td>${esc((bs.of || []).join(", "))}</td><td>${bs.rule ? `by rule ${val(bs.rule)}` : esc(bs.tier || "")}${bs.review ? " · to review" : ""}</td><td>${bs.source ? `<span class="meta">${esc(bs.source)}</span> ` : ""}${esc(bs.note || "")}</td></tr>`).join("") + `</table>`;
+    if (r.kind === "projects") {
+      const configuration = e.configuration || {};
+      const fields = [["token_budget", "Token budget", "tokens"], ["token_budget_per_ac", "Token budget per AC", "tokens"], ["token_warning_per_ac", "Token warning per AC", "tokens"], ["time_budget_per_turn", "Time budget per turn", "seconds"], ["time_budget_per_ac", "Time budget per AC", "seconds"], ["time_budget_total", "Time budget total", "seconds"]];
+      const budgetValue = (value, unit) => value == null ? "Not set" : unit === "tokens" ? (value / 1e6).toFixed(1) + "M" : value % 60 === 0 ? (value / 60) + " min" : value + " s";
+      h += '<h3>Project Configuration</h3><table><tr><th>Property</th><th>Value</th></tr>' + fields.map(([key, label, unit]) => '<tr><td>' + esc(label) + '</td><td>' + esc(budgetValue(configuration[key], unit)) + '</td></tr>').join('') + '</table>';
+    }
+    h += `<div class="file" style="margin-top:24px">${e.platform ? esc(e.source_key) : "registry/" + esc(e.file)}</div>`;
+    return h;
+  }
+  return `<h2>Record unavailable</h2><p>${esc(k)}</p>`;
+}
+document.addEventListener("click", e => {
+  const el=e.target.closest("[data-k]");if(!el)return;
+  if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+  e.preventDefault();const k=el.dataset.k;
+  if(el.classList.contains("row")&&!k.startsWith("x:")){if(open.has(k)&&k===current)open.delete(k);else open.add(k);keepOpen();}
+  reveal(k);select(k,el.dataset.anchor);
+});
+document.getElementById("q").addEventListener("input", render);
+// The tree's width: dragged, and kept.
+{
+  const main = document.querySelector("main"), grip = document.getElementById("grip");
+  const setW = w => main.style.setProperty("--nav-w", Math.max(180, Math.min(w, window.innerWidth - 300)) + "px");
+  try { const w = +localStorage.getItem("standards-nav-w"); if (w) setW(w); } catch (e) {}
+  grip.addEventListener("pointerdown", e => {
+    grip.classList.add("drag"); grip.setPointerCapture(e.pointerId);
+    const move = ev => setW(ev.clientX);
+    const up = ev => {
+      grip.classList.remove("drag"); grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up);
+      try { localStorage.setItem("standards-nav-w", Math.round(ev.clientX)); } catch (e2) {}
+    };
+    grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", up);
+  });
+}
+const registryNav = registryNavigation(key => { current=key; reveal(current); render(); }, ["detail", "tree"]);
+</script>
+
+<script src="/api/dev-projects.js"></script>
+</body>
+</html>

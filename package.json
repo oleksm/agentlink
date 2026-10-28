@@ -1,0 +1,45 @@
+{
+  "name": "agenlink",
+  "version": "0.9.0",
+  "description": "Local agent coordination, project registry and evidence-driven workflows",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "bin": {
+    "agenlink": "dist/cli.js",
+    "agentlink": "dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "web",
+    "skills",
+    "examples",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "node --input-type=module -e \"import {rmSync} from 'node:fs'; rmSync('dist', {recursive:true, force:true})\" && tsc",
+    "check": "tsc --noEmit",
+    "prepack": "npm run build",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.12",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "7.0.2"
+  },
+  "author": "Alexm"
+}
