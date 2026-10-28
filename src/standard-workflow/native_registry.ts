@@ -659,8 +659,13 @@ export class NativeRegistry {
       };
     });
   }
+  private recordLock(key: string): string {
+    return /^(project|intake|retrospective)\./.test(key)
+      ? join(this.home, "projects", key.slice(key.indexOf(".")+1), "workers.lock")
+      : join(this.tree, ".edit");
+  }
   set(key: string, dotted: string, yamlText: string): NativeRecord {
-    return locked(join(this.tree, ".edit"), () => {
+    return locked(this.recordLock(key), () => {
       const item = this.get(key),
         owner = this.generated(item.path, dotted);
       if (owner)
@@ -731,6 +736,7 @@ export class NativeRegistry {
     const key = record.identity?.key;
     if (typeof key !== "string" || !key.includes("."))
       throw Error("Expected original identity.key");
+    return locked(this.recordLock(key), () => {
     const old = this.records().find((r) => r.key === key);
     if (old) {
       if (this.generated(old.path)) throw Error("Record is generated: " + key);
@@ -757,6 +763,7 @@ export class NativeRegistry {
         stringify(record, { lineWidth: 230 }),
     );
     return this.get(key);
+    });
   }
   view(filter: RegistryFilter = {}): Row {
     return {
